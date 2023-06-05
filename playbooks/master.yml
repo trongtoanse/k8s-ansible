@@ -1,0 +1,52 @@
+- hosts: "*"
+  become: yes
+  vars_files:
+    - ../resources/env_variables
+  tasks:
+    - name: Pulling images required for setting up a Kubernetes cluster
+      shell: kubeadm config images pull
+
+    - name: Resetting kubeadm
+      shell: kubeadm reset -f
+      register: output
+
+    - name: Initializing Kubernetes cluster
+      shell: sudo kubeadm init --apiserver-advertise-address {{master_addr}} --pod-network-cidr=10.244.0.0/16
+      register: output
+
+    - name: Storing Logs and Generated token for future purpose.
+      local_action: copy content={{ output.stdout }} dest=k8s_join_token
+      become: False
+
+    - name: Remove temp files
+      shell: |
+        rm -rf $HOME/.kube
+
+    - name: Copying required files
+      shell: |
+        rm -rf $HOME/.kube
+        mkdir -p $HOME/.kube
+        sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+        sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+    - name: Install Network Add-on
+      shell: |
+        kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+
+    - name: Install Nginx Ingress
+      shell: |
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/ns-and-sa.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/rbac/rbac.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/default-server-secret.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/nginx-config.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/ingress-class.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/crds/k8s.nginx.org_virtualservers.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/crds/k8s.nginx.org_virtualserverroutes.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/crds/k8s.nginx.org_transportservers.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/crds/k8s.nginx.org_policies.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/common/crds/k8s.nginx.org_globalconfigurations.yaml
+        kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.0.1/deployments/daemon-set/nginx-ingress.yaml
+
+    - name: Add default instance of the Ingresss-NGINX controller
+      shell: |
+        kubectl -n ingress-nginx annotate ingressclasses nginx ingressclass.kubernetes.io/is-default-class="true"

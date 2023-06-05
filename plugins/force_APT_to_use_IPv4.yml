@@ -1,0 +1,15 @@
+- hosts: "*"
+  become: yes
+  tasks:
+    - name: Force APT Package Manager To Use IPv4 In Ubuntu
+      shell: |
+        apt -y -o Acquire::ForceIPv4=true update
+        apt -y -o Acquire::ForceIPv4=true upgrade
+
+    - name: Create 99force-ipv4
+      file:
+        path: /etc/apt/apt.conf.d/99force-ipv4
+        state: touch
+
+    - name: Make The Setting Persistent
+      shell: echo 'Acquire::ForceIPv4 "true";' | tee /etc/apt/apt.conf.d/99force-ipv4

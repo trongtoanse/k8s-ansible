@@ -1,0 +1,3 @@
+---
+- import_playbook: ../plugins/force_APT_to_use_IPv4.yml
+- import_playbook: ../plugins/install_docker.yml

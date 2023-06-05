@@ -1,0 +1,29 @@
+- hosts: "*"
+  become: yes
+  vars_files:
+    - ../resources/env_variables
+  tasks:
+    - name: Update repos
+      shell: |
+        apt update
+        apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+    - name: Add Docker’s official GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+    - name: Set up the stable repository
+      shell: |
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Install latest version of Docker Engine
+      shell: |
+        apt update
+        apt install -y docker-ce docker-ce-cli containerd.io
+
+    - name: Use Docker as a non-root user
+      shell: |
+        usermod -aG docker {{user}}
+
+    - name: Reboot VM
+      reboot:

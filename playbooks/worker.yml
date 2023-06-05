@@ -1,0 +1,16 @@
+- hosts: "*"
+  become: yes
+  tasks:
+    - name: Remove temp files
+      shell: |
+        rm -rf k8s_join_token
+        rm -rf token.sh
+
+    - name: Copying token to worker nodes
+      copy: src=k8s_join_token dest=k8s_join_token
+
+    - name: Joining worker nodes with master node
+      shell: |
+        kubeadm reset -f
+        cat k8s_join_token | tail -2 > token.sh
+        sh token.sh
